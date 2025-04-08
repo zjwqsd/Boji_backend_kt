@@ -1,0 +1,41 @@
+spring:
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/boji?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 1561365020@qq.com
+    password: woukhlbgdkrhjgea
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+file:
+  local:
+    base-path: ./uploads     # 本地磁盘存储目录
+    base-url: http://localhost:8080/files  # 对外暴露的URL前缀
+
+server:
+  port: 8080
