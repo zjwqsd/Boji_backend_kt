@@ -10,18 +10,18 @@ data class PdfItem(
     val id: Long = 0,
 
     @Column(unique = true, nullable = false)
-    val customId: String = "",
+    var customId: String = "",
 
     @Column(nullable = false)
-    val title: String = "",
+    var title: String = "",
 
-    val category1: String = "",
-    val category2: String = "",
-    val location: String = "",
-    val description: String = "",
-    val shape: String = "",
-    val year: String = "",
-    val price: Double = 0.0,
+    var category1: String = "",
+    var category2: String = "",
+    var location: String = "",
+    var description: String = "",
+    var shape: String = "",
+    var year: String = "",
+    var price: Double = 0.0,
 
     @Column(nullable = false)
     val pdfPath: String = "",
@@ -30,5 +30,5 @@ data class PdfItem(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "household_id")
-    val household: Household? = null
+    var household: Household? = null
 )

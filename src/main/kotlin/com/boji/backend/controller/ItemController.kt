@@ -2,7 +2,9 @@ package com.boji.backend.controller
 
 import com.boji.backend.dto.HouseholdRequest
 import com.boji.backend.dto.PdfPreviewDTO
+import com.boji.backend.dto.UpdateItemRequest
 import com.boji.backend.dto.UploadPdfForm
+
 import com.boji.backend.exception.GlobalExceptionHandler
 import com.boji.backend.model.Household
 import com.boji.backend.model.PdfItem
@@ -17,8 +19,10 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import com.boji.backend.repository.HouseholdRepository
+//import jakarta.validation.constraints.Null
+
 import java.io.File
-import java.nio.file.Paths
+//import java.nio.file.Paths
 
 @RestController
 @RequestMapping("/api/item")
@@ -62,8 +66,11 @@ class PdfItemController(
                 ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
         }
         //检查 household 和 category2 是否对应
-        if(household?.category2 != form.category2){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse("户名不属于该二级分类"))
+
+        if (household != null) {
+            if (household.category2 != form.category2) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse("户名不属于该二级分类"))
+            }
         }
 
         // 5. 存入数据库
@@ -73,7 +80,7 @@ class PdfItemController(
             category1 = form.category1,
             category2 = form.category2,
             location = form.location,
-            description = form.description,
+            description = form.description?: "",
             shape = form.shape,
             year = form.year,
             price = form.price,
@@ -161,5 +168,129 @@ class PdfItemController(
         return ResponseEntity.ok(ApiResponse("预览成功", previews))
     }
 
+    @PutMapping("/update/{id}")
+    @AdminOnly
+    fun updateItem(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateItemRequest
+    ): ResponseEntity<ApiResponse<Any>>{
+        val item = pdfItemRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("商品不存在"))
+
+        // 🆔 检查 customId 是否要更新，并校验唯一性
+        request.customId?.let { newCustomId ->
+            if (newCustomId != item.customId) {
+                val exists = pdfItemRepository.existsByCustomIdAndIdNot(newCustomId, item.id)
+                if (exists) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse("商品编号已被其他商品使用"))
+                }
+//                item.customId = newCustomId  // ✅ 安全更新
+            }
+        }
+
+
+
+
+        // ⚠️ household 是对象，不是 id，需先查出来
+        var household: Household? = null
+        request.householdId?.let { hId ->
+            household = householdRepository.findById(hId).orElse(null)
+                ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
+        }
+
+
+        if (household != null ) {
+            val category2 = request.category2?:item.category2
+            if (household!!.category2 != category2) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse("户名不属于该二级分类"))
+            }
+        }
+
+        // 更新字段（不能更新 customId 和 pdfPath）
+        request.title?.let { item.title = it }
+        request.customId?.let{item.customId=it}
+        request.category1?.let { item.category1 = it }
+        request.category2?.let { item.category2 = it }
+        household?.let { item.household = it } // ✅ 用对象赋值
+        request.location?.let { item.location = it }
+        request.description?.let { item.description = it }
+        request.shape?.let { item.shape = it }
+        request.year?.let { item.year = it }
+        request.price?.let { item.price = it }
+
+        pdfItemRepository.save(item)
+
+        val response = mapOf(
+//            "message" to "商品信息已更新",
+//            "updated_item" to mapOf(
+                "id" to item.id,
+                "customId" to item.customId,
+                "title" to item.title,
+                "category1" to item.category1,
+                "category2" to item.category2,
+                "householdId" to item.household?.id, // ✅ 返回 ID
+                "location" to item.location,
+                "description" to item.description,
+                "shape" to item.shape,
+                "year" to item.year,
+                "price" to item.price
+//            )
+        )
+        return ResponseEntity.ok(ApiResponse("更新成功", response))
+    }
+
+    @DeleteMapping("/delete/{id}")
+    @AdminOnly
+    fun deleteItem(
+        @PathVariable id: Long
+    ): ResponseEntity<ApiResponse<Any>> {
+        val item = pdfItemRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("商品不存在"))
+
+        // 🗑️ 删除 PDF 文件（如果存在）
+        val pdfFilePath = item.pdfPath
+        val file = File(pdfFilePath)
+        if (file.exists()) {
+            try {
+                file.delete()
+            } catch (ex: Exception) {
+                // 可以记录日志
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse("删除时发生错误，请重试"))
+            }
+        }
+
+        // 🔥 删除数据库记录
+        pdfItemRepository.delete(item)
+
+        return ResponseEntity.ok(ApiResponse("商品信息已删除"))
+    }
+
+    @GetMapping("/search")
+    fun searchPdfs(@RequestParam query: String): ResponseEntity<List<Long>> {
+        if (query.length < 1) {
+            return ResponseEntity.badRequest().build()
+        }
+
+        val searchTerm = "%${query.lowercase()}%"
+        val results = pdfItemRepository.searchByKeyword(searchTerm)
+
+        val ids = results.map { it.id }
+        return ResponseEntity.ok(ids)
+    }
+
+    data class HouseholdDTO(
+        val id: Long,
+        val name: String
+    )
+
+
+    @GetMapping("/household/all")
+    @AdminOnly
+    fun getAllHouseholds(): ResponseEntity<List<HouseholdDTO>> {
+        val households = householdRepository.findAll()
+        val result = households.map { HouseholdDTO(it.id, it.name) }
+        return ResponseEntity.ok(result)
+    }
 
 }

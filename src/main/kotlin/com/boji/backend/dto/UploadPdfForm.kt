@@ -20,8 +20,10 @@ data class UploadPdfForm(
     @field:NotBlank(message = "位置不能为空")
     val location: String = "",
 
-    @field:NotBlank(message = "描述不能为空")
-    val description: String = "",
+//    @field:NotBlank(message = "描述不能为空")
+//    val description: String = "",
+    @field:NotNull(message = "描述字段必须存在")
+    val description: String? = "",
 
     @field:NotBlank(message = "形状不能为空")
     val shape: String = "",
