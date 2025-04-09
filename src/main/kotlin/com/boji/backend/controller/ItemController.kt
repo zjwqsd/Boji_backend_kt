@@ -35,6 +35,7 @@ class PdfItemController(
     @PostMapping("/upload", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @AdminOnly
     fun uploadPdfItem(
+        @RequestHeader("Authorization") authHeader: String?,
         @Valid @ModelAttribute form: UploadPdfForm,
         @RequestParam file: MultipartFile,
         @RequestParam(required = false) cover: MultipartFile?
@@ -113,6 +114,7 @@ class PdfItemController(
     @PostMapping("/household/create")
     @AdminOnly  // 你之前自定义的注解，假设只允许管理员创建
     fun createHousehold(
+        @RequestHeader("Authorization") authHeader: String?,
         @Valid @RequestBody request: HouseholdRequest
     ): ResponseEntity<ApiResponse<Any>> {
 
@@ -173,6 +175,7 @@ class PdfItemController(
     @AdminOnly
     fun updateItem(
         @PathVariable id: Long,
+        @RequestHeader("Authorization") authHeader: String?,
         @RequestBody request: UpdateItemRequest
     ): ResponseEntity<ApiResponse<Any>>{
         val item = pdfItemRepository.findById(id).orElse(null)
@@ -244,7 +247,8 @@ class PdfItemController(
     @DeleteMapping("/delete/{id}")
     @AdminOnly
     fun deleteItem(
-        @PathVariable id: Long
+        @PathVariable id: Long,
+        @RequestHeader("Authorization") authHeader: String?
     ): ResponseEntity<ApiResponse<Any>> {
         val item = pdfItemRepository.findById(id).orElse(null)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("商品不存在"))
@@ -308,6 +312,7 @@ class PdfItemController(
     @Transactional
     @AdminOnly
     fun updateHousehold(
+        @RequestHeader("Authorization") authHeader: String?,
         @PathVariable id: Long,
         @RequestBody request: UpdateHouseholdRequest
     ): ResponseEntity<ApiResponse<Any>> {
@@ -340,7 +345,9 @@ class PdfItemController(
     @DeleteMapping("/household/delete/{id}")
     @Transactional
     @AdminOnly
-    fun deleteHousehold(@PathVariable id: Long): ResponseEntity<ApiResponse<Any>> {
+    fun deleteHousehold(
+        @RequestHeader("Authorization") authHeader: String?,
+        @PathVariable id: Long): ResponseEntity<ApiResponse<Any>> {
         val household = householdRepository.findById(id).orElse(null)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
 

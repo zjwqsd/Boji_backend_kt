@@ -50,7 +50,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-mail") // 用于发邮件
 	implementation("com.aliyun.oss:aliyun-sdk-oss:3.18.1")
-
+	implementation("net.coobird:thumbnailator:0.4.20")
 //	implementation("org.springframework.boot:spring-boot-starter-mail")
 }
 

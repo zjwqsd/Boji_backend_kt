@@ -142,7 +142,10 @@ class AuthController(
 
     @GetMapping("/me")
     @UserOnly
-    fun getCurrentUser(request: HttpServletRequest): ResponseEntity<ApiResponse<Any>> {
+    fun getCurrentUser(
+        @RequestHeader("Authorization") authHeader: String?,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiResponse<Any>> {
 //        if (authHeader.isNullOrBlank() || !authHeader.startsWith("Bearer ")) {
 //            return ResponseEntity
 //                .status(HttpStatus.UNAUTHORIZED)

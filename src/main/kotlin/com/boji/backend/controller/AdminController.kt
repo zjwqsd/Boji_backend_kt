@@ -32,7 +32,9 @@ class AdminManageController(
 
     @GetMapping("/users-with-subs")
     @AdminOnly
-    fun getUsersWithSubs(): ResponseEntity<ApiResponse<Any>> {
+    fun getUsersWithSubs(
+        @RequestHeader("Authorization") authHeader: String?,
+    ): ResponseEntity<ApiResponse<Any>> {
         val users = userRepository.findAllByIsSubUserFalse()
 
         val result = users.map { user ->
@@ -66,7 +68,9 @@ class AdminManageController(
 
     @PostMapping("/assign-sub-user")
     @AdminOnly
-    fun assignSubUser(@Valid @RequestBody req: AssignSubUserRequest): ResponseEntity<ApiResponse<Any>> {
+    fun assignSubUser(@Valid @RequestBody req: AssignSubUserRequest,
+                      @RequestHeader("Authorization") authHeader: String?
+                      ): ResponseEntity<ApiResponse<Any>> {
         val parentUser = userRepository.findByUserIdAndIsSubUserFalse(req.parentUserId)
             ?: return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
