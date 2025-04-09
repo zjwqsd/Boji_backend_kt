@@ -12,6 +12,7 @@ import com.boji.backend.service.UserIdGenerator
 import com.boji.backend.service.EmailCodeVerifier
 import com.boji.backend.dto.AdminLoginRequest
 import com.boji.backend.repository.AdminRepository
+import com.boji.backend.security.UserOnly
 import com.boji.backend.service.VerificationCodeService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
@@ -140,7 +141,61 @@ class AuthController(
     }
 
     @GetMapping("/me")
-    fun getCurrentUser(@RequestHeader("Authorization") authHeader: String?): ResponseEntity<ApiResponse<Any>> {
+    @UserOnly
+    fun getCurrentUser(request: HttpServletRequest): ResponseEntity<ApiResponse<Any>> {
+//        if (authHeader.isNullOrBlank() || !authHeader.startsWith("Bearer ")) {
+//            return ResponseEntity
+//                .status(HttpStatus.UNAUTHORIZED)
+//                .body(ApiResponse("认证失败：缺少或格式错误的 Authorization header"))
+//        }
+//
+//        val token = authHeader.removePrefix("Bearer ").trim()
+//        val userId = jwtUtil.parseUserId(token)
+//
+//        if (userId == null) {
+//            return ResponseEntity
+//                .status(HttpStatus.UNAUTHORIZED)
+//                .body(ApiResponse("认证失败：无效令牌"))
+//        }
+//
+//        val user = userRepository.findById(userId).orElse(null)
+//            ?: return ResponseEntity
+//                .status(HttpStatus.NOT_FOUND)
+//                .body(ApiResponse("用户不存在"))
+        val userId = request.getAttribute("userId") as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse("未找到用户ID"))
+
+        val user = userRepository.findById(userId).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("用户不存在"))
+        val data = mapOf(
+            "id" to user.userId,
+            "email" to user.email,
+            "realname" to user.realname,
+            "nickname" to user.nickname,
+            "phone" to user.phone,
+            "company" to user.company,
+            "address" to user.address,
+            "is_sub_user" to user.isSubUser
+            // "parent_id" to user.parentUser?.id  // 可选
+        )
+
+        return ResponseEntity.ok(ApiResponse("获取用户信息成功", data))
+    }
+
+    data class UpdateUserRequest(
+        val nickname: String?,
+        val realname: String?,
+        val address: String?,
+        val company: String?,
+        val phone: String?
+    )
+
+
+    @PostMapping("/update")
+    fun updateCurrentUser(
+        @RequestHeader("Authorization") authHeader: String?,
+        @RequestBody updateRequest: UpdateUserRequest
+    ): ResponseEntity<ApiResponse<Any>> {
         if (authHeader.isNullOrBlank() || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
@@ -161,20 +216,18 @@ class AuthController(
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse("用户不存在"))
 
-        val data = mapOf(
-            "id" to user.userId,
-            "email" to user.email,
-            "realname" to user.realname,
-            "nickname" to user.nickname,
-            "phone" to user.phone,
-            "company" to user.company,
-            "address" to user.address,
-            "is_sub_user" to user.isSubUser
-            // "parent_id" to user.parentUser?.id  // 可选
-        )
+        // 更新字段
+        user.nickname = updateRequest.nickname ?: user.nickname
+        user.realname = updateRequest.realname ?: user.realname
+        user.address = updateRequest.address ?: user.address
+        user.company = updateRequest.company ?: user.company
+        user.phone = updateRequest.phone ?: user.phone
 
-        return ResponseEntity.ok(ApiResponse("获取用户信息成功", data))
+        userRepository.save(user)
+
+        return ResponseEntity.ok(ApiResponse("用户信息更新成功"))
     }
+
 
     @PostMapping("/reset-password")
     fun resetPassword(

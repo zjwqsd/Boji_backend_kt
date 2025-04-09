@@ -17,19 +17,19 @@ data class User(
     val userId: String? = null,
 
     @Column(length = 100)
-    val nickname: String? = null,
+    var nickname: String? = null,
 
     @Column(length = 100)
-    val realname: String? = null,
+    var realname: String? = null,
 
     @Column(length = 255)
-    val address: String? = null,
+    var address: String? = null,
 
     @Column(length = 255)
-    val company: String? = null,
+    var company: String? = null,
 
     @Column(length = 20)
-    val phone: String? = null,
+    var phone: String? = null,
 
     @Column(length = 100, unique = true)
     val email: String? = null,
