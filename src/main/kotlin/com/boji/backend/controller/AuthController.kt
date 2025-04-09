@@ -13,6 +13,8 @@ import com.boji.backend.service.EmailCodeVerifier
 import com.boji.backend.dto.AdminLoginRequest
 import com.boji.backend.repository.AdminRepository
 import com.boji.backend.security.UserOnly
+import com.boji.backend.security.annotation.CurrentUser
+import com.boji.backend.security.annotation.RoleAllowed
 import com.boji.backend.service.VerificationCodeService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
@@ -141,35 +143,12 @@ class AuthController(
     }
 
     @GetMapping("/me")
-    @UserOnly
+    @RoleAllowed("user")
     fun getCurrentUser(
         @RequestHeader("Authorization") authHeader: String?,
+        @CurrentUser(role = "user") user: User,
         request: HttpServletRequest,
     ): ResponseEntity<ApiResponse<Any>> {
-//        if (authHeader.isNullOrBlank() || !authHeader.startsWith("Bearer ")) {
-//            return ResponseEntity
-//                .status(HttpStatus.UNAUTHORIZED)
-//                .body(ApiResponse("认证失败：缺少或格式错误的 Authorization header"))
-//        }
-//
-//        val token = authHeader.removePrefix("Bearer ").trim()
-//        val userId = jwtUtil.parseUserId(token)
-//
-//        if (userId == null) {
-//            return ResponseEntity
-//                .status(HttpStatus.UNAUTHORIZED)
-//                .body(ApiResponse("认证失败：无效令牌"))
-//        }
-//
-//        val user = userRepository.findById(userId).orElse(null)
-//            ?: return ResponseEntity
-//                .status(HttpStatus.NOT_FOUND)
-//                .body(ApiResponse("用户不存在"))
-        val userId = request.getAttribute("userId") as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse("未找到用户ID"))
-
-        val user = userRepository.findById(userId).orElse(null)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("用户不存在"))
         val data = mapOf(
             "id" to user.userId,
             "email" to user.email,
@@ -195,29 +174,12 @@ class AuthController(
 
 
     @PostMapping("/update")
+    @RoleAllowed("user")
     fun updateCurrentUser(
         @RequestHeader("Authorization") authHeader: String?,
+        @CurrentUser(role = "user") user: User,
         @RequestBody updateRequest: UpdateUserRequest
     ): ResponseEntity<ApiResponse<Any>> {
-        if (authHeader.isNullOrBlank() || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse("认证失败：缺少或格式错误的 Authorization header"))
-        }
-
-        val token = authHeader.removePrefix("Bearer ").trim()
-        val userId = jwtUtil.parseUserId(token)
-
-        if (userId == null) {
-            return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse("认证失败：无效令牌"))
-        }
-
-        val user = userRepository.findById(userId).orElse(null)
-            ?: return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse("用户不存在"))
 
         // 更新字段
         user.nickname = updateRequest.nickname ?: user.nickname

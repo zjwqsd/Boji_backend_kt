@@ -8,26 +8,34 @@ import java.util.*
 
 @Component
 class JwtUtil {
-    private val secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256)
-    private val expirationMillis = 1000 * 60 * 60 * 2 // 2小时
 
-    fun generateToken(userId: Long): String {
+    private val secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256)
+
+    // 默认过期时间：普通用户 2 小时，管理员 4 小时
+    private val defaultUserExpiry = 1000 * 60 * 60 * 2L     // 2 小时
+    private val defaultAdminExpiry = 1000 * 60 * 60 * 4L    // 4 小时
+
+    // ✅ 通用构建函数
+    fun generateTokenWithExpiry(userId: Long, role: String, expiryMillis: Long): String {
         return Jwts.builder()
             .setSubject(userId.toString())
-            .setExpiration(Date(System.currentTimeMillis() + expirationMillis))
-            .signWith(secretKey)
-            .compact()
-    }
-    // ✅ 超级管理员生成 Token（含角色标记）
-    fun generateAdminToken(adminId: Long): String {
-        return Jwts.builder()
-            .setSubject(adminId.toString())
-            .claim("role", "admin")  // 添加角色字段
-            .setExpiration(Date(System.currentTimeMillis() + expirationMillis))
+            .claim("role", role)
+            .setExpiration(Date(System.currentTimeMillis() + expiryMillis))
             .signWith(secretKey)
             .compact()
     }
 
+    // ✅ 普通用户默认 token
+    fun generateToken(userId: Long): String {
+        return generateTokenWithExpiry(userId, "user", defaultUserExpiry)
+    }
+
+    // ✅ 管理员默认 token
+    fun generateAdminToken(adminId: Long): String {
+        return generateTokenWithExpiry(adminId, "admin", defaultAdminExpiry)
+    }
+
+    // ✅ 提取用户ID
     fun parseUserId(token: String): Long? {
         return try {
             val claims = Jwts.parserBuilder()

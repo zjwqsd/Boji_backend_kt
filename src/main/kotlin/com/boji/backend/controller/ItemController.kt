@@ -68,7 +68,6 @@ class PdfItemController(
                 ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
         }
         //检查 household 和 category2 是否对应
-
         if (household != null) {
             if (household.category2 != form.category2) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse("户名不属于该二级分类"))
@@ -193,9 +192,6 @@ class PdfItemController(
             }
         }
 
-
-
-
         // ⚠️ household 是对象，不是 id，需先查出来
         var household: Household? = null
         request.householdId?.let { hId ->
@@ -294,7 +290,6 @@ class PdfItemController(
 
 
     @GetMapping("/household/all")
-//    @AdminOnly
     fun getAllHouseholds(): ResponseEntity<ApiResponse<List<HouseholdDTO>>> {
         val households = householdRepository.findAll()
         val result = households.map { HouseholdDTO(it.id, it.name,it.category2, it.code,it.description) }
