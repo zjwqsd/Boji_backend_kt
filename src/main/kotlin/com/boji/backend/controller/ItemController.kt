@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import com.boji.backend.repository.HouseholdRepository
+import org.springframework.transaction.annotation.Transactional
 //import jakarta.validation.constraints.Null
 
 import java.io.File
@@ -281,16 +282,75 @@ class PdfItemController(
 
     data class HouseholdDTO(
         val id: Long,
-        val name: String
+        val name: String,
+        val code: String,
+        val category2: String,
+        val description: String? = null,
     )
 
 
     @GetMapping("/household/all")
-    @AdminOnly
-    fun getAllHouseholds(): ResponseEntity<List<HouseholdDTO>> {
+//    @AdminOnly
+    fun getAllHouseholds(): ResponseEntity<ApiResponse<List<HouseholdDTO>>> {
         val households = householdRepository.findAll()
-        val result = households.map { HouseholdDTO(it.id, it.name) }
-        return ResponseEntity.ok(result)
+        val result = households.map { HouseholdDTO(it.id, it.name,it.category2, it.code,it.description) }
+        return ResponseEntity.ok(ApiResponse("查询成功",result))
+    }
+
+
+    data class UpdateHouseholdRequest(
+        val name: String? = null,
+        val category2: String? = null
+    )
+
+
+    @PutMapping("/household/update/{id}")
+    @Transactional
+    @AdminOnly
+    fun updateHousehold(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateHouseholdRequest
+    ): ResponseEntity<ApiResponse<Any>> {
+        val household = householdRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
+
+        // 更新字段（非 null 才更新）
+        request.name?.let { household.name = it }
+        request.category2?.let { household.category2 = it }
+
+        householdRepository.save(household)
+
+        // ✅ 如果更新了 category2，同步更新 PdfItem 表
+        request.category2?.let { newCategory2 ->
+            pdfItemRepository.updateCategory2ByHouseholdId(newCategory2, id)
+        }
+
+        return ResponseEntity.ok(ApiResponse("归户信息已更新"))
+    }
+
+    @GetMapping("/household/filter/{id}")
+    fun getHouseholdItems(@PathVariable id: Long): ResponseEntity<ApiResponse<List<Long>>> {
+        val household = householdRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
+
+        val itemIds = pdfItemRepository.findByHouseholdId(id).map { it.id }
+        return ResponseEntity.ok(ApiResponse("查询归户条目成功", itemIds))
+    }
+
+    @DeleteMapping("/household/delete/{id}")
+    @Transactional
+    @AdminOnly
+    fun deleteHousehold(@PathVariable id: Long): ResponseEntity<ApiResponse<Any>> {
+        val household = householdRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("归户不存在"))
+
+        // 👇 更新 PdfItem 表中的 householdId 为 null
+        pdfItemRepository.clearHouseholdIdByHouseholdId(id)
+
+        // 👇 删除归户
+        householdRepository.delete(household)
+
+        return ResponseEntity.ok(ApiResponse("删除归户成功，注意PDF归户信息的更新"))
     }
 
 }

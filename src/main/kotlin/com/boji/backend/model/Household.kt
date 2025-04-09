@@ -10,7 +10,7 @@ data class Household(
     val id: Long = 0,
 
     @Column(nullable = false, unique = true)
-    val name: String = "",
+    var name: String = "",
 
     @Column(nullable = false, unique = true)
     val code: String = "",
@@ -19,7 +19,7 @@ data class Household(
     val description: String? = null,
 
     @Column(nullable = false)
-    val category2: String = "",
+    var category2: String = "",
 
     @OneToMany(mappedBy = "household", fetch = FetchType.LAZY)
     val pdfItems: List<PdfItem> = emptyList()  // 可选反向关系
