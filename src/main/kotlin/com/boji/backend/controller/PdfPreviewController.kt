@@ -20,7 +20,7 @@ class PdfPreviewController(
 ) {
 
     @GetMapping("/preview/{id}")
-    @RoleAllowed("user","admin")
+//    @RoleAllowed("user","admin")
     fun previewPdf(@RequestHeader("Authorization") authHeader: String?,
                    @PathVariable id: Long, response: HttpServletResponse) {
         val pdfItem = pdfItemRepository.findById(id)

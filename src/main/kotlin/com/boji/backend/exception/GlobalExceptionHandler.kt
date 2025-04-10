@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.NoHandlerFoundException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -71,6 +72,22 @@ class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.NOT_FOUND)
             .body(ApiResponse(ex.message ?: "资源不存在"))
+    }
+
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFound(ex: NoResourceFoundException): ResponseEntity<ApiResponse<Nothing>> {
+        val path = ex.resourcePath ?: "未知路径"
+        println(path)
+        val message = when {
+            path.startsWith("/files/") || path.startsWith("/static/") -> "静态资源不存在: $path"
+            path.startsWith("api/") -> "接口不存在: $path"
+            else -> "资源不存在: $path"
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse(message))
     }
     /**
      * 通用异常处理（兜底）
