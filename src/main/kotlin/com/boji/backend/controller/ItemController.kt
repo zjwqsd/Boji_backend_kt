@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import com.boji.backend.repository.HouseholdRepository
+import com.boji.backend.security.annotation.RoleAllowed
+import org.springframework.context.annotation.Role
 import org.springframework.transaction.annotation.Transactional
 //import jakarta.validation.constraints.Null
 
@@ -169,6 +171,35 @@ class PdfItemController(
 
         return ResponseEntity.ok(ApiResponse("预览成功", previews))
     }
+
+    @PostMapping("/info/{id}")
+    @RoleAllowed("user","admin")
+    fun getInfo(
+//        @RequestBody request: BatchPreviewRequest
+        @PathVariable id: Long,
+        @RequestHeader("Authorization") authHeader: String?,
+    ): ResponseEntity<ApiResponse<Any>> {
+//        val items = pdfItemRepository.findAllById(request.ids)
+
+        val item = pdfItemRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("商品不存在"))
+        val info = mapOf(
+            "id" to item.id,
+            "customId" to item.customId,
+            "title" to item.title,
+            "category1" to item.category1,
+            "category2" to item.category2,
+            "householdId" to item.household?.id, // ✅ 返回 ID
+            "location" to item.location,
+            "description" to item.description,
+            "shape" to item.shape,
+            "year" to item.year,
+            "price" to item.price
+        )
+        return ResponseEntity.ok(ApiResponse("返回商品信息", info))
+    }
+
+
 
     @PutMapping("/update/{id}")
     @AdminOnly
