@@ -3,10 +3,12 @@ package com.boji.backend.controller
 import com.boji.backend.exception.GlobalExceptionHandler
 import com.boji.backend.repository.PdfItemRepository
 import com.boji.backend.security.UserOnly
+import com.boji.backend.security.annotation.RoleAllowed
 import net.coobird.thumbnailator.Thumbnails
 import org.springframework.web.bind.annotation.*
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Role
 import java.io.File
 import java.nio.file.Paths
 
@@ -18,7 +20,7 @@ class PdfPreviewController(
 ) {
 
     @GetMapping("/preview/{id}")
-    @UserOnly
+    @RoleAllowed("user","admin")
     fun previewPdf(@RequestHeader("Authorization") authHeader: String?,
                    @PathVariable id: Long, response: HttpServletResponse) {
         val pdfItem = pdfItemRepository.findById(id)
@@ -45,18 +47,17 @@ class PdfPreviewController(
     @GetMapping("/cover/{id}")
     fun previewCover(@PathVariable id: Long, response: HttpServletResponse) {
         val pdfItem = pdfItemRepository.findById(id)
-            .orElseThrow { RuntimeException("PDF not found") }
+            .orElseThrow {  GlobalExceptionHandler.NotFoundException("PDF 不存在或已被删除") }
 
         val coverPath = pdfItem.coverPath
         if (coverPath.isNullOrBlank()) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, "未设置封面图")
-            return
+            throw GlobalExceptionHandler.NotFoundException("该条目未设置封面")
         }
 
-        val imageFile = File(coverPath)
+//        val imageFile = File(coverPath)
+        val imageFile = File(Paths.get(basePath, pdfItem.coverPath).toString())
         if (!imageFile.exists()) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, "封面图不存在")
-            return
+            throw GlobalExceptionHandler.NotFoundException("封面不存在或者已损坏")
         }
 
         response.contentType = "image/jpeg"
