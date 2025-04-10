@@ -63,6 +63,15 @@ class GlobalExceptionHandler {
             .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponse(ex.message ?: "业务异常"))
     }
+
+    class NotFoundException(message: String) : RuntimeException(message)
+
+    @ExceptionHandler(NotFoundException::class)
+    fun handleNotFoundException(ex: NotFoundException): ResponseEntity<ApiResponse<Nothing>> {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse(ex.message ?: "资源不存在"))
+    }
     /**
      * 通用异常处理（兜底）
      */

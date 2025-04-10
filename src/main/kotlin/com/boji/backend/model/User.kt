@@ -48,5 +48,9 @@ data class User(
     val parentUser: User? = null,
 
     @OneToMany(mappedBy = "parentUser")
-    val subUsers: List<User> = emptyList()
+    val subUsers: List<User> = emptyList(),
+
+    @OneToMany(mappedBy = "user")
+    val pdfPermissions: List<UserPdfPermission> = emptyList()
+
 )

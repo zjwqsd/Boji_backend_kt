@@ -21,9 +21,15 @@ class LocalStorageService(
         val dir = Paths.get(basePath, folder)
         Files.createDirectories(dir)
 
+//        val filePath = dir.resolve(filename)
+//        file.transferTo(filePath)
+
+//        return "$baseUrl/$folder/$filename"
+//        return filePath.toAbsolutePath().toString()
+        val relativePath = "$folder/$filename"
         val filePath = dir.resolve(filename)
         file.transferTo(filePath)
 
-        return "$baseUrl/$folder/$filename"
+        return relativePath // 返回 pdfPath 字段
     }
 }

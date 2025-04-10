@@ -30,5 +30,10 @@ data class PdfItem(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "household_id")
-    var household: Household? = null
+    var household: Household? = null,
+
+    @OneToMany(mappedBy = "pdfItem")
+    val userPermissions: List<UserPdfPermission> = emptyList()
+
+
 )
