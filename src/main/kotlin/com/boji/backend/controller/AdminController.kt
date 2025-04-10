@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import com.boji.backend.repository.PdfItemRepository
 import com.boji.backend.repository.HouseholdRepository
+import org.springframework.transaction.annotation.Transactional
 import java.io.File
 import java.nio.file.Paths
 
@@ -99,6 +100,35 @@ class AdminManageController(
             ApiResponse("附属用户已创建", mapOf("sub_user_id" to subUserId))
         )
     }
+
+    @DeleteMapping("/delete-sub-user/{id}")
+    @AdminOnly
+    @Transactional
+    fun deleteSubUserById(
+        @PathVariable id: Long,
+        @RequestHeader("Authorization") authHeader: String?
+    ): ResponseEntity<ApiResponse<Any>> {
+        val user = userRepository.findById(id).orElse(null)
+            ?: return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse("用户不存在"))
+
+        if (!user.isSubUser) {
+            return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse("不能删除主用户"))
+        }
+        if(user.emailVerified){
+            return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse("不能删除绑定邮箱的用户"))
+        }
+
+        userRepository.delete(user)
+
+        return ResponseEntity.ok(ApiResponse("附属用户已删除"))
+    }
+
 
 
 }
