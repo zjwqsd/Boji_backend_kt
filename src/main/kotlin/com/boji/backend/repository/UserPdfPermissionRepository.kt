@@ -16,4 +16,6 @@ interface UserPdfPermissionRepository : JpaRepository<UserPdfPermission, Long> {
     fun existsByUserAndPdfItem(user: User, pdfItem: PdfItem): Boolean
 
     fun deleteByUserAndPdfItem(user: User, pdfItem: PdfItem)
+
+    fun findByPdfItem(pdfItem: PdfItem): List<UserPdfPermission>
 }
