@@ -165,7 +165,8 @@ class PdfItemController(
                 householdId = it.household?.id,
                 location = it.location,
                 year = it.year,
-                price = it.price
+                price = it.price,
+                coverPath = it.coverPath
             )
         }
 
@@ -299,7 +300,7 @@ class PdfItemController(
     }
 
     @GetMapping("/search")
-    fun searchPdfs(@RequestParam query: String): ResponseEntity<List<Long>> {
+    fun searchPdfs(@RequestParam query: String): ResponseEntity<ApiResponse<List<Long>>> {
         if (query.length < 1) {
             return ResponseEntity.badRequest().build()
         }
@@ -308,7 +309,7 @@ class PdfItemController(
         val results = pdfItemRepository.searchByKeyword(searchTerm)
 
         val ids = results.map { it.id }
-        return ResponseEntity.ok(ids)
+        return ResponseEntity.ok(ApiResponse("搜索成功", ids))
     }
 
     data class HouseholdDTO(
@@ -323,14 +324,16 @@ class PdfItemController(
     @GetMapping("/household/all")
     fun getAllHouseholds(): ResponseEntity<ApiResponse<List<HouseholdDTO>>> {
         val households = householdRepository.findAll()
-        val result = households.map { HouseholdDTO(it.id, it.name,it.category2, it.code,it.description) }
+        val result = households.map { HouseholdDTO(it.id, it.name,it.code, it.category2,it.description) }
         return ResponseEntity.ok(ApiResponse("查询成功",result))
     }
 
 
     data class UpdateHouseholdRequest(
         val name: String? = null,
-        val category2: String? = null
+        val category2: String? = null,
+        val description: String? = null,
+        val code: String? = null
     )
 
 
@@ -348,7 +351,8 @@ class PdfItemController(
         // 更新字段（非 null 才更新）
         request.name?.let { household.name = it }
         request.category2?.let { household.category2 = it }
-
+        request.description?.let { household.description = it }
+        request.code?.let { household.code = it }
         householdRepository.save(household)
 
         // ✅ 如果更新了 category2，同步更新 PdfItem 表

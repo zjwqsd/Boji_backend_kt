@@ -13,10 +13,10 @@ data class Household(
     var name: String = "",
 
     @Column(nullable = false, unique = true)
-    val code: String = "",
+    var code: String = "",
 
     @Column(nullable = true)
-    val description: String? = null,
+    var description: String? = null,
 
     @Column(nullable = false)
     var category2: String = "",

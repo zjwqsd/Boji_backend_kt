@@ -9,5 +9,6 @@ data class PdfPreviewDTO(
     val householdId: Long?,
     val location: String?,
     val year: String?,
-    val price: Double
+    val price: Double,
+    val coverPath: String?,
 )
