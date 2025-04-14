@@ -1,5 +1,5 @@
 package com.boji.backend.service.storage
-
+//
 import com.aliyun.oss.OSSClientBuilder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Profile
@@ -10,7 +10,7 @@ import java.util.*
 
 
 @Service
-@Profile("prod")  // 只在生产环境生效
+@Profile("oss")  // 只在生产环境生效
 class OssStorageService(
     @Value("\${aliyun.oss.endpoint}") private val endpoint: String,
     @Value("\${aliyun.oss.accessKeyId}") private val accessKeyId: String,

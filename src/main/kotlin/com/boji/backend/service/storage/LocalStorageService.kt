@@ -9,7 +9,7 @@ import java.nio.file.Paths
 import java.util.*
 
 @Service
-@Profile("dev")  // 只在 dev 环境生效
+@Profile("dev | prod")
 class LocalStorageService(
     @Value("\${file.local.base-path}") private val basePath: String,
     @Value("\${file.local.base-url}") private val baseUrl: String

@@ -8,8 +8,9 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:mysql://localhost:3306/boji_kt?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    url: jdbc:mysql://localhost:3307/boji?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
     username: root
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -42,7 +43,7 @@ file:
     base-url: http://localhost:8080/files  # 对外暴露的URL前缀
 
 server:
-  port: 8080
+  port: 8084
   error:
     whitelabel:
       enabled: false
