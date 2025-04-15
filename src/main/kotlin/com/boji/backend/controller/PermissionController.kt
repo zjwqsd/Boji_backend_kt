@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeParseException
 
 @RestController
-@RequestMapping("/admin/permissions")
+@RequestMapping("/api/permissions")
 class PermissionController(
     private val userRepo: UserRepository,
     private val pdfRepo: PdfItemRepository,
