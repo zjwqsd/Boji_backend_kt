@@ -1,5 +1,7 @@
 package com.boji.backend.controller
 
+import com.boji.backend.dto.GrantCategoryPermissionRequest
+import com.boji.backend.dto.GrantPermissionRequest
 import com.boji.backend.exception.GlobalExceptionHandler
 import com.boji.backend.model.PdfItem
 import com.boji.backend.model.User
@@ -27,10 +29,11 @@ class PermissionController(
     @AdminOnly
     fun grantPermission(
         @RequestHeader("Authorization") authHeader: String?,
-        @RequestParam userId: Long,
-        @RequestParam pdfId: Long,
-        @RequestParam(required = false) expiresAt: String? // ISO 字符串
+        @RequestBody request: GrantPermissionRequest
     ): ResponseEntity<ApiResponse<Any>> {
+        val userId = request.userId
+        val pdfId = request.pdfId
+        val expiresAt = request.expiresAt
         val user = userRepo.findById(userId).orElseThrow {
             throw GlobalExceptionHandler.BusinessException("用户不存在（userId=$userId）")
         }
@@ -48,6 +51,8 @@ class PermissionController(
         userPermissionService.grantPdfToUser(user, pdf, expireDate)
         return ResponseEntity.ok(ApiResponse("授权成功"))
     }
+
+
 
     @DeleteMapping("/revoke")
     @AdminOnly
@@ -95,15 +100,21 @@ class PermissionController(
     @PostMapping("/grant-category")
     @AdminOnly
     fun grantCategoryPermission(
-        @RequestParam userId: Long,
-        @RequestParam categoryName: String,
-        @RequestParam(required = false) expiresAt: String?
+        @RequestBody request: GrantCategoryPermissionRequest,
+        @RequestHeader("Authorization") authHeader: String?,
     ): ResponseEntity<ApiResponse<Any>> {
+        val userId = request.userId
+        val categoryName = request.categoryName
+        val expiresAt = request.expiresAt
+
         val user = userRepo.findById(userId).orElseThrow {
             throw GlobalExceptionHandler.BusinessException("用户不存在（userId=$userId）")
         }
-        val expireDate = expiresAt?.let { LocalDateTime.parse(it) }
-
+        val expireDate = try {
+            expiresAt?.let { LocalDateTime.parse(it) }
+        } catch (e: DateTimeParseException) {
+            throw GlobalExceptionHandler.BusinessException("参数 expiresAt 格式不正确，预期格式为 yyyy-MM-dd'T'HH:mm:ss，例如 2025-04-15T15:00:00")
+        }
         userPermissionService.grantCategoryToUser(user, categoryName, expireDate)
         return ResponseEntity.ok(ApiResponse("子库权限授权成功"))
     }

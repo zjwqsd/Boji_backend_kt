@@ -21,12 +21,17 @@ class UserPdfPermissionService(
             throw IllegalArgumentException("不能给附属用户授权，请授权其主账户")
         }
 
-        if (userPdfPermissionRepo.existsByUserAndPdfItem(user, pdf)) {
-            throw IllegalArgumentException("该用户已经拥有此 PDF 权限")
-        }
+        val existingPermission = userPdfPermissionRepo.findByUserAndPdfItem(user, pdf)
 
-        return userPdfPermissionRepo.save(UserPdfPermission(user, pdf, LocalDateTime.now(), expiresAt))
+        return if (existingPermission != null) {
+            existingPermission.expiresAt = expiresAt
+            existingPermission.grantedAt = LocalDateTime.now() // 可选：更新时间戳
+            userPdfPermissionRepo.save(existingPermission)
+        } else {
+            userPdfPermissionRepo.save(UserPdfPermission(user, pdf, LocalDateTime.now(), expiresAt))
+        }
     }
+
 
     /**
      * 获取用户所有可访问的 PDF（包含继承权限，排除关闭的子库）
@@ -93,14 +98,20 @@ class UserPdfPermissionService(
     }
 
     fun grantCategoryToUser(user: User, categoryName: String, expiresAt: LocalDateTime? = null) {
-        if (user.isSubUser) throw IllegalArgumentException("不能给附属用户授权子库权限")
-
-        if (userCategoryPermissionRepo.existsByUserAndCategoryName(user, categoryName)) {
-            throw IllegalArgumentException("用户已拥有该子库权限")
+        if (user.isSubUser) {
+            throw IllegalArgumentException("不能给附属用户授权子库权限")
         }
 
-        userCategoryPermissionRepo.save(UserCategoryPermission(user, categoryName, expiresAt))
+        val existingPermission = userCategoryPermissionRepo.findByUserAndCategoryName(user, categoryName)
+
+        if (existingPermission != null) {
+            existingPermission.expiresAt = expiresAt
+            userCategoryPermissionRepo.save(existingPermission)
+        } else {
+            userCategoryPermissionRepo.save(UserCategoryPermission(user, categoryName, expiresAt))
+        }
     }
+
 
     fun revokeCategoryFromUser(user: User, categoryName: String) {
         val permission = userCategoryPermissionRepo.findByUserAndCategoryName(user, categoryName)
@@ -151,10 +162,19 @@ class UserPdfPermissionService(
 
     fun getCategoryPermissionStatus(user: User, categoryName: String): Pair<Boolean, LocalDateTime?> {
         val effectiveUser = getEffectiveUser(user)
-        val permission = userCategoryPermissionRepo.findByUserAndCategoryName(effectiveUser, categoryName)
-        val expiresAt = permission?.expiresAt
         val now = LocalDateTime.now()
+
+        val categoryControl = pdfCategoryControlRepo.findByName(categoryName)
+            ?: return Pair(false, null)
+
+        if (!categoryControl.isOpen) return Pair(false, null)
+
+        val permission = userCategoryPermissionRepo.findByUserAndCategoryName(effectiveUser, categoryName)
+            ?: return Pair(false, null)  // ❗️关键修复：没有权限记录 = 没有 access
+
+        val expiresAt = permission.expiresAt
         val isValid = expiresAt == null || expiresAt.isAfter(now)
+
         return Pair(isValid, expiresAt)
     }
 
