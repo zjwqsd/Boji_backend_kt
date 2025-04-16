@@ -14,7 +14,7 @@ class OrderService(
     private val userRepo: UserRepository,
     private val pdfItemRepo: PdfItemRepository,
     private val pdfCategoryControlRepo: PdfCategoryControlRepository,
-    private val superUserPermissionService: SuperUserPermissionService
+    private val userPdfPermissionService: UserPdfPermissionService
 ) {
 
     fun createOrder(userId: Long, items: List<OrderItemRequest>): Order {
@@ -66,14 +66,14 @@ class OrderService(
                     val pdf = pdfItemRepo.findById(item.targetId).orElseThrow {
                         GlobalExceptionHandler.BusinessException("PDF 不存在（id=${item.targetId}）")
                     }
-                    superUserPermissionService.grantPdfToUser(user, pdf, expiresAt)
+                    userPdfPermissionService.grantPdfToUser(user, pdf, expiresAt)
                 }
 
                 PurchaseType.CATEGORY -> {
                     val category = pdfCategoryControlRepo.findById(item.targetId).orElseThrow {
                         GlobalExceptionHandler.BusinessException("子库不存在（id=${item.targetId}）")
                     }
-                    superUserPermissionService.grantCategoryToUser(user, category.name, expiresAt)
+                    userPdfPermissionService.grantCategoryToUser(user, category.name, expiresAt)
                 }
             }
         }

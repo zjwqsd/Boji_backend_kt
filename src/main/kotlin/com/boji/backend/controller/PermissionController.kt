@@ -153,7 +153,7 @@ class PermissionController(
     }
 
     @GetMapping("/check/all-categories")
-    @AdminOnly
+//    @AdminOnly
     fun checkUserAllCategoryPermissions(
         @RequestParam userId: Long
     ): ResponseEntity<ApiResponse<Map<String, Map<String, Any?>>>> {

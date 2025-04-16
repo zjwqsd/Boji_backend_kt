@@ -12,7 +12,7 @@ class PdfCategoryInitializer(
 ) : CommandLineRunner {
 
     override fun run(vararg args: String?) {
-        val categories = listOf("文物", "书籍", "报告")
+        val categories = listOf("散叶", "另册", "归户")
 
         categories.forEach { name ->
             if (pdfCategoryControlRepo.findByName(name) == null) {
