@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 
 @Service
-class SuperUserPermissionService(
+class UserPdfPermissionService(
     private val userPdfPermissionRepo: UserPdfPermissionRepository,
     private val userCategoryPermissionRepo: UserCategoryPermissionRepository,
     private val pdfCategoryControlRepo: PdfCategoryControlRepository,
@@ -147,6 +147,15 @@ class SuperUserPermissionService(
             val expiresAt = it.expiresAt
             expiresAt == null || expiresAt.isAfter(now)
         } ?: false
+    }
+
+    fun getCategoryPermissionStatus(user: User, categoryName: String): Pair<Boolean, LocalDateTime?> {
+        val effectiveUser = getEffectiveUser(user)
+        val permission = userCategoryPermissionRepo.findByUserAndCategoryName(effectiveUser, categoryName)
+        val expiresAt = permission?.expiresAt
+        val now = LocalDateTime.now()
+        val isValid = expiresAt == null || expiresAt.isAfter(now)
+        return Pair(isValid, expiresAt)
     }
 
 
