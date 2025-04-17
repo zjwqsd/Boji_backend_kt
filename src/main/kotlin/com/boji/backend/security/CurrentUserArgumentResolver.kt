@@ -31,7 +31,7 @@ class CurrentUserArgumentResolver(
         mavContainer: ModelAndViewContainer?,
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?
-    ): Any {
+    ): Any? {
         val request = webRequest.nativeRequest as HttpServletRequest
         val userId = request.getAttribute("userId") as? Long
             ?: throw RuntimeException("未找到当前用户ID")
@@ -39,21 +39,19 @@ class CurrentUserArgumentResolver(
             ?: throw RuntimeException("未找到当前用户角色")
 
         val annotation = parameter.getParameterAnnotation(CurrentUser::class.java)
-            ?: throw RuntimeException("缺少 @CurrentUser 注解")
+            ?: return null // 不应该发生，保底
+
         val expectedRole = annotation.role
 
+        // ⚠️ 如果角色不匹配，返回 null（而不是抛异常）
         if (expectedRole != tokenRole) {
-            throw RuntimeException("身份不匹配：需要 $expectedRole，但当前为 $tokenRole")
+            return null
         }
 
         return when (expectedRole) {
-            "user" -> userRepository.findById(userId)
-                .orElseThrow { RuntimeException("用户不存在") }
-
-            "admin" -> adminRepository.findById(userId)
-                .orElseThrow { RuntimeException("管理员不存在") }
-
-            else -> throw RuntimeException("未知身份角色：$expectedRole")
+            "user" -> userRepository.findById(userId).orElse(null)
+            "admin" -> adminRepository.findById(userId).orElse(null)
+            else -> null
         }
     }
 }
