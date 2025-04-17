@@ -6,8 +6,10 @@ import com.boji.backend.dto.UpdateItemRequest
 import com.boji.backend.dto.UploadPdfForm
 
 import com.boji.backend.exception.GlobalExceptionHandler
+import com.boji.backend.model.Admin
 import com.boji.backend.model.Household
 import com.boji.backend.model.PdfItem
+import com.boji.backend.model.User
 import com.boji.backend.repository.PdfItemRepository
 import com.boji.backend.response.ApiResponse
 import com.boji.backend.security.AdminOnly
@@ -20,8 +22,10 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import com.boji.backend.repository.HouseholdRepository
 import com.boji.backend.repository.UserRepository
+import com.boji.backend.security.annotation.CurrentUser
 import com.boji.backend.security.annotation.RoleAllowed
 import com.boji.backend.service.UserPdfPermissionService
+import jakarta.servlet.http.HttpServletRequest
 //import org.springframework.context.annotation.Role
 import org.springframework.transaction.annotation.Transactional
 //import jakarta.validation.constraints.Null
@@ -195,29 +199,55 @@ class PdfItemController(
     }
 
     @PostMapping("/info/{id}")
-    @RoleAllowed("user","admin")
+    @RoleAllowed("user", "admin")
     fun getInfo(
-//        @RequestBody request: BatchPreviewRequest
+        @CurrentUser(role = "user") user: User?,  // 如果是 user 就注入
+        @CurrentUser(role = "admin") admin: Admin?,  // 如果是 admin 就注入
         @PathVariable id: Long,
-        @RequestHeader("Authorization") authHeader: String?,
+        @RequestHeader("Authorization") authHeader: String?,  // 可选：用于记录或调试
+        request: HttpServletRequest  // 用于获取当前角色
     ): ResponseEntity<ApiResponse<Any>> {
-//        val items = pdfItemRepository.findAllById(request.ids)
+
+        val role = request.getAttribute("role") as? String
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse("缺少身份信息"))
 
         val item = pdfItemRepository.findById(id).orElse(null)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("商品不存在"))
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse("PDF 不存在"))
+
+        // 权限控制逻辑
+        when (role) {
+            "admin" -> {
+                // 管理员直接通过，无需额外权限判断
+            }
+            "user" -> {
+                if (user == null) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse("无法获取当前用户信息"))
+                }
+                val hasAccess = userPdfPermissionService.hasAccessToPdf(user, item)
+                if (!hasAccess) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse("你无权访问该 PDF"))
+                }
+            }
+            else -> {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse("未知角色：$role"))
+            }
+        }
+
+        // 构造返回信息
         val info = mapOf(
             "id" to item.id,
             "customId" to item.customId,
             "title" to item.title,
             "category1" to item.category1,
             "category2" to item.category2,
-            "householdId" to item.household?.id, // ✅ 返回 ID
+            "householdId" to item.household?.id,
             "location" to item.location,
             "description" to item.description,
             "shape" to item.shape,
             "year" to item.year,
             "price" to item.price
         )
+
         return ResponseEntity.ok(ApiResponse("返回商品信息", info))
     }
 

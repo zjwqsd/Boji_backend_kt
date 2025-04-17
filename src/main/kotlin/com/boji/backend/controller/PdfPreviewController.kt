@@ -1,14 +1,22 @@
 package com.boji.backend.controller
 
 import com.boji.backend.exception.GlobalExceptionHandler
+import com.boji.backend.model.Admin
+import com.boji.backend.model.User
 import com.boji.backend.repository.PdfItemRepository
+import com.boji.backend.response.ApiResponse
 import com.boji.backend.security.UserOnly
+import com.boji.backend.security.annotation.CurrentUser
 import com.boji.backend.security.annotation.RoleAllowed
+import com.boji.backend.service.UserPdfPermissionService
+import jakarta.servlet.http.HttpServletRequest
 import net.coobird.thumbnailator.Thumbnails
 import org.springframework.web.bind.annotation.*
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Role
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import java.io.File
 import java.nio.file.Paths
 
@@ -16,13 +24,48 @@ import java.nio.file.Paths
 @RequestMapping("/api/pdf")
 class PdfPreviewController(
     @Value("\${file.local.base-path}") private val basePath: String,
-    val pdfItemRepository: PdfItemRepository
+    val pdfItemRepository: PdfItemRepository,
+    private val userPdfPermissionService: UserPdfPermissionService,
+
 ) {
 
     @GetMapping("/preview/{id}")
     @RoleAllowed("user","admin")
-    fun previewPdf(@RequestHeader("Authorization") authHeader: String?,
-                   @PathVariable id: Long, response: HttpServletResponse) {
+    fun previewPdf(
+        @CurrentUser(role = "user") user: User?,  // 如果是 user 就注入
+        @CurrentUser(role = "admin") admin: Admin?,  // 如果是 admin 就注入
+        @RequestHeader("Authorization") authHeader: String?,
+        @PathVariable id: Long, response: HttpServletResponse,
+        request: HttpServletRequest,
+    ) {
+
+        val role = request.getAttribute("role") as? String
+            ?: throw GlobalExceptionHandler.BusinessException("缺少身份信息")
+
+        val item = pdfItemRepository.findById(id).orElse(null)
+            ?: throw GlobalExceptionHandler.BusinessException("PDF 不存在")
+
+        // 权限控制逻辑
+        when (role) {
+            "admin" -> {
+                // 管理员直接通过，无需额外权限判断
+            }
+            "user" -> {
+                if (user == null) {
+                    throw GlobalExceptionHandler.BusinessException("无法获取当前用户信息")
+                }
+                val hasAccess = userPdfPermissionService.hasAccessToPdf(user, item)
+                if (!hasAccess) {
+                    throw GlobalExceptionHandler.BusinessException("你无权访问该 PDF")
+                }
+            }
+            else -> {
+                throw GlobalExceptionHandler.BusinessException("未知角色：$role")
+            }
+        }
+
+
+
         val pdfItem = pdfItemRepository.findById(id)
             .orElseThrow { GlobalExceptionHandler.NotFoundException("PDF 不存在或已被删除") }
 

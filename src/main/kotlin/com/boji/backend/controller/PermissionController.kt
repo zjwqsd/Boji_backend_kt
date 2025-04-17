@@ -91,8 +91,6 @@ class PermissionController(
             throw GlobalExceptionHandler.BusinessException("用户不存在（userId=$userId）")
         }
         val ids = userPermissionService.getAccessiblePdfIds(user).toList()
-//        return ResponseEntity.ok(ApiResponse("获取成功", pdfs))
-//        val ids = pdfs.map { it.id }
         return ResponseEntity.ok(ApiResponse("获取成功", ids))
     }
 
