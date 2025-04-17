@@ -1,109 +1,64 @@
 package com.boji.backend.service
 
-import com.boji.backend.dto.OrderItemRequest
+import com.boji.backend.dto.CreateOrderRequest
+import com.boji.backend.dto.OrderStatusResponse
 import com.boji.backend.exception.GlobalExceptionHandler
-import com.boji.backend.model.*
-import com.boji.backend.repository.*
+import com.boji.backend.model.Order
+import com.boji.backend.model.OrderStatus
+import com.boji.backend.repository.OrderRepository
+import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Service
 class OrderService(
-    private val orderRepo: OrderRepository,
-    private val userRepo: UserRepository,
-    private val pdfItemRepo: PdfItemRepository,
-    private val pdfCategoryControlRepo: PdfCategoryControlRepository,
-    private val userPdfPermissionService: UserPdfPermissionService
+    private val orderRepository: OrderRepository
 ) {
 
-    fun createOrder(userId: Long, items: List<OrderItemRequest>): Order {
-        val user = userRepo.findById(userId).orElseThrow {
-            GlobalExceptionHandler.BusinessException("用户不存在（userId=$userId）")
+    @Transactional
+    fun createOrder(request: CreateOrderRequest): Long {
+        // 你可以在这里校验 targetId 是否存在，例如 PdfItem / Category
+
+        val order = Order(
+            userId = request.userId,
+            amount = request.amount,
+            type = request.type,
+            targetId = request.targetId,
+            description = generateDescription(request),
+            status = OrderStatus.PENDING,
+            paidAt = null
+        )
+        return orderRepository.save(order).id
+    }
+
+    fun getOrderStatus(orderId: Long): OrderStatusResponse {
+        val order = orderRepository.findById(orderId).orElseThrow {
+            GlobalExceptionHandler.BusinessException("订单不存在，ID = $orderId")
         }
-
-        val order = Order().apply {
-            this.user = user
-            this.status = OrderStatus.PENDING
-            this.createdAt = LocalDateTime.now()
-        }
-
-        val purchaseItems = items.map {
-            val price = calculatePrice(it.type, it.durationDays)
-            PurchaseItem().apply {
-                this.order = order
-                this.type = it.type
-                this.targetId = it.targetId
-                this.durationDays = it.durationDays
-                this.price = price
-            }
-        }
-
-        order.items.addAll(purchaseItems)
-        order.totalPrice = purchaseItems.sumOf { it.price }
-
-        return orderRepo.save(order)
+        return OrderStatusResponse(
+            status = order.status,
+            paidAt = order.paidAt
+        )
     }
 
     @Transactional
-    fun processOrder(orderId: Long) {
-        val order = orderRepo.findById(orderId).orElseThrow {
-            GlobalExceptionHandler.BusinessException("订单不存在（orderId=$orderId）")
-        }
-
-        if (order.status != OrderStatus.PAID) {
-            throw GlobalExceptionHandler.BusinessException("订单未支付，无法授权")
-        }
-
-        val user = order.user
-        val now = LocalDateTime.now()
-
-        for (item in order.items) {
-            val expiresAt = now.plusDays(item.durationDays.toLong())
-
-            when (item.type) {
-                PurchaseType.PDF -> {
-                    val pdf = pdfItemRepo.findById(item.targetId).orElseThrow {
-                        GlobalExceptionHandler.BusinessException("PDF 不存在（id=${item.targetId}）")
-                    }
-                    userPdfPermissionService.grantPdfToUser(user, pdf, expiresAt)
-                }
-
-                PurchaseType.CATEGORY -> {
-                    val category = pdfCategoryControlRepo.findById(item.targetId).orElseThrow {
-                        GlobalExceptionHandler.BusinessException("子库不存在（id=${item.targetId}）")
-                    }
-                    userPdfPermissionService.grantCategoryToUser(user, category.name, expiresAt)
-                }
-            }
-        }
-    }
-
-    fun getUserOrders(userId: Long): List<Order> {
-        val user = userRepo.findById(userId).orElseThrow {
-            GlobalExceptionHandler.BusinessException("用户不存在（userId=$userId）")
-        }
-        return orderRepo.findAll().filter { it.user.id == user.id }
-    }
-
     fun cancelOrder(orderId: Long) {
-        val order = orderRepo.findById(orderId).orElseThrow {
-            GlobalExceptionHandler.BusinessException("订单不存在（orderId=$orderId）")
+        val order = orderRepository.findById(orderId).orElseThrow {
+            GlobalExceptionHandler.BusinessException("订单不存在，ID = $orderId")
         }
-        if (order.status != OrderStatus.PENDING) {
-            throw GlobalExceptionHandler.BusinessException("仅支持取消待支付订单")
+        if (order.status == OrderStatus.PAID) {
+            throw GlobalExceptionHandler.BusinessException("订单已支付，无法取消")
         }
-        order.status = OrderStatus.CANCELED
-        orderRepo.save(order)
+        order.status = OrderStatus.CANCELLED
+        orderRepository.save(order)
     }
 
-    private fun calculatePrice(type: PurchaseType, durationDays: Int): Double {
-        // 简单示例：定价逻辑
-        return when (type) {
-            PurchaseType.PDF -> 1.0 * durationDays / 30
-            PurchaseType.CATEGORY -> 5.0 * durationDays / 30
+    private fun generateDescription(request: CreateOrderRequest): String {
+        return when (request.type) {
+            com.boji.backend.model.OrderType.PDF_ITEM ->
+                "购买 PDF（ID=${request.targetId}）"
+            com.boji.backend.model.OrderType.CATEGORY ->
+                "购买子库权限（分类ID=${request.targetId}）"
         }
     }
 }
-
-

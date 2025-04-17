@@ -3,34 +3,41 @@ package com.boji.backend.model
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
-@Entity
-@Table(name = "orders")
-class Order {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long = 0
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    lateinit var user: User
-
-    @OneToMany(mappedBy = "order", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var items: MutableList<PurchaseItem> = mutableListOf()
-
-    @Column(name = "created_at", nullable = false)
-    var createdAt: LocalDateTime = LocalDateTime.now()
-
-    @Column(name = "total_price", nullable = false)
-    var totalPrice: Double = 0.0
-
-    @Column(name = "status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    var status: OrderStatus = OrderStatus.PENDING
+enum class OrderType {
+    PDF_ITEM, CATEGORY
 }
 
 enum class OrderStatus {
-    PENDING, // 待支付
-    PAID,    // 已支付
-    CANCELED // 已取消
+    PENDING, PAID, CANCELLED, FAILED
 }
+
+@Entity
+@Table(name = "orders")
+data class Order(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0,
+
+    val userId: Long = 0,
+
+    val amount: Long = 0, // 单位：分
+
+    val description: String = "",
+
+    @Enumerated(EnumType.STRING)
+    val type: OrderType = OrderType.PDF_ITEM,
+
+    val targetId: Long = 0, // 与数据库主键绑定
+
+    @Enumerated(EnumType.STRING)
+    var status: OrderStatus = OrderStatus.PENDING,
+
+    @Column(name = "created_at", nullable = false)
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    var paidAt: LocalDateTime? = null
+) {
+    // JPA 无参构造函数
+    protected constructor() : this(0, 0, 0, "", OrderType.PDF_ITEM, 0)
+}
+
