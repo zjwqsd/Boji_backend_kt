@@ -1,34 +1,35 @@
 package com.boji.backend.controller
 
 import com.boji.backend.dto.AssignSubUserRequest
-import com.boji.backend.dto.UploadPdfForm
+//import com.boji.backend.dto.UploadPdfForm
 import com.boji.backend.response.ApiResponse
 import com.boji.backend.security.AdminOnly
 import org.springframework.http.ResponseEntity
 import com.boji.backend.repository.UserRepository
 import com.boji.backend.dto.SubUserResponse
 import com.boji.backend.dto.UserWithSubsResponse
-import com.boji.backend.model.PdfItem
+//import com.boji.backend.model.PdfItem
 import com.boji.backend.model.User
 import com.boji.backend.service.UserIdGenerator
 import jakarta.validation.Valid
-import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
+//import org.springframework.http.HttpStatus
+//import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.multipart.MultipartFile
-import com.boji.backend.repository.PdfItemRepository
-import com.boji.backend.repository.HouseholdRepository
+//import org.springframework.web.multipart.MultipartFile
+//import com.boji.backend.repository.PdfItemRepository
+//import com.boji.backend.repository.HouseholdRepository
+import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
-import java.io.File
-import java.nio.file.Paths
+//import java.io.File
+//import java.nio.file.Paths
 
 @RestController
 @RequestMapping("/api/admin")
 class AdminManageController(
     private val userRepository: UserRepository,
     private val userIdGenerator: UserIdGenerator,
-    private val pdfItemRepository: PdfItemRepository,
-    private val householdRepository: HouseholdRepository
+//    private val pdfItemRepository: PdfItemRepository,
+//    private val householdRepository: HouseholdRepository
 ) {
 
     @GetMapping("/users-with-subs")
@@ -128,9 +129,6 @@ class AdminManageController(
 
         return ResponseEntity.ok(ApiResponse("附属用户已删除"))
     }
-
-
-
 }
 
 

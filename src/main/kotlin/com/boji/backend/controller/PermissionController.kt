@@ -90,9 +90,9 @@ class PermissionController(
         val user = userRepo.findById(userId).orElseThrow {
             throw GlobalExceptionHandler.BusinessException("用户不存在（userId=$userId）")
         }
-        val pdfs = userPermissionService.getAccessiblePdfs(user)
+        val ids = userPermissionService.getAccessiblePdfIds(user).toList()
 //        return ResponseEntity.ok(ApiResponse("获取成功", pdfs))
-        val ids = pdfs.map { it.id }
+//        val ids = pdfs.map { it.id }
         return ResponseEntity.ok(ApiResponse("获取成功", ids))
     }
 

@@ -19,8 +19,10 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import com.boji.backend.repository.HouseholdRepository
+import com.boji.backend.repository.UserRepository
 import com.boji.backend.security.annotation.RoleAllowed
-import org.springframework.context.annotation.Role
+import com.boji.backend.service.UserPdfPermissionService
+//import org.springframework.context.annotation.Role
 import org.springframework.transaction.annotation.Transactional
 //import jakarta.validation.constraints.Null
 
@@ -32,7 +34,9 @@ import java.io.File
 class PdfItemController(
     private val fileStorageService: FileStorageService,
     private val pdfItemRepository: PdfItemRepository,
-    private val householdRepository: HouseholdRepository
+    private val householdRepository: HouseholdRepository,
+    private val userRepository: UserRepository,
+    private val userPdfPermissionService: UserPdfPermissionService,
 ) {
     @PostMapping("/upload", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @AdminOnly
@@ -53,14 +57,14 @@ class PdfItemController(
 
 
         // 2. 上传 PDF 到存储系统（本地 or OSS）
-        val fileExt = file.originalFilename?.substringAfterLast('.', "pdf") ?: "pdf"
-        val pdfFileName = "$customId.$fileExt"
+//        val fileExt = file.originalFilename?.substringAfterLast('.', "pdf") ?: "pdf"
+//        val pdfFileName = "$customId.$fileExt"
         val pdfUrl = fileStorageService.upload(file, "pdfs")
 
         // 3. 上传封面（可选）
         val coverUrl = cover?.let {
-            val ext = it.originalFilename?.substringAfterLast('.', "jpg") ?: "jpg"
-            val coverFileName = "$customId.$ext"
+//            val ext = it.originalFilename?.substringAfterLast('.', "jpg") ?: "jpg"
+//            val coverFileName = "$customId.$ext"
             fileStorageService.upload(it, "covers")
         }
 
@@ -100,17 +104,34 @@ class PdfItemController(
     @GetMapping("/filter")
     fun filterPdfItems(
         @RequestParam(required = false) category1: String?,
-        @RequestParam(required = false) category2: String?
+        @RequestParam(required = false) category2: String?,
+        @RequestParam(required = false) userId: Long?
     ): ResponseEntity<ApiResponse<List<Long>>> {
-        val items: List<PdfItem> = when {
+        // 1. 根据分类参数查询所有符合条件的 PDF 条目
+        val allItems: List<PdfItem> = when {
             category1.isNullOrBlank() -> pdfItemRepository.findAll()
             !category2.isNullOrBlank() -> pdfItemRepository.findAllByCategory1AndCategory2(category1, category2)
             else -> pdfItemRepository.findAllByCategory1(category1)
         }
 
-        val ids = items.map { it.id }
-        return ResponseEntity.ok(ApiResponse("查询成功",ids))
+        // 2. 如果传入了 userId，则进行权限过滤
+        val filteredIds: List<Long> = if (userId != null) {
+            val user = userRepository.findById(userId).orElse(null)
+            if (user == null) {
+                return ResponseEntity.badRequest().body(ApiResponse("用户不存在", emptyList()))
+            }
+
+            val accessibleIds = userPdfPermissionService.getAccessiblePdfIds(user)
+            allItems.mapNotNull { item ->
+                if (item.id in accessibleIds) item.id else null
+            }
+        } else {
+            allItems.map { it.id }
+        }
+
+        return ResponseEntity.ok(ApiResponse("查询成功", filteredIds))
     }
+
 
     @PostMapping("/household/create")
     @AdminOnly  // 你之前自定义的注解，假设只允许管理员创建
@@ -300,17 +321,32 @@ class PdfItemController(
     }
 
     @GetMapping("/search")
-    fun searchPdfs(@RequestParam query: String): ResponseEntity<ApiResponse<List<Long>>> {
+    fun searchPdfs(
+        @RequestParam query: String,
+        @RequestParam(required = false) userId: Long?
+    ): ResponseEntity<ApiResponse<List<Long>>> {
         if (query.length < 1) {
-            return ResponseEntity.badRequest().build()
+            return ResponseEntity.badRequest().body(ApiResponse("搜索关键词不能为空", emptyList()))
         }
 
         val searchTerm = "%${query.lowercase()}%"
         val results = pdfItemRepository.searchByKeyword(searchTerm)
 
-        val ids = results.map { it.id }
-        return ResponseEntity.ok(ApiResponse("搜索成功", ids))
+        val filteredIds: List<Long> = if (userId != null) {
+            val user = userRepository.findById(userId).orElse(null)
+            if (user == null) {
+                return ResponseEntity.badRequest().body(ApiResponse("用户不存在", emptyList()))
+            }
+
+            val accessibleIds = userPdfPermissionService.getAccessiblePdfIds(user)
+            results.mapNotNull { if (it.id in accessibleIds) it.id else null }
+        } else {
+            results.map { it.id }
+        }
+
+        return ResponseEntity.ok(ApiResponse("搜索成功", filteredIds))
     }
+
 
     data class HouseholdDTO(
         val id: Long,

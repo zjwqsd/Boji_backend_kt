@@ -12,7 +12,7 @@ import com.boji.backend.service.UserIdGenerator
 import com.boji.backend.service.EmailCodeVerifier
 import com.boji.backend.dto.AdminLoginRequest
 import com.boji.backend.repository.AdminRepository
-import com.boji.backend.security.UserOnly
+//import com.boji.backend.security.UserOnly
 import com.boji.backend.security.annotation.CurrentUser
 import com.boji.backend.security.annotation.RoleAllowed
 import com.boji.backend.service.VerificationCodeService
@@ -73,12 +73,9 @@ class AuthController(
         // 2️⃣ 附属用户绑定逻辑
         if (!req.userId.isNullOrBlank()) {
             val existingUser = userRepository.findByUserId(req.userId)
-
-            if (existingUser == null) {
-                return ResponseEntity
+                ?: return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse("绑定失败：用户 ID 不存在"))
-            }
 
             if (!existingUser.email.isNullOrBlank()) {
                 return ResponseEntity
@@ -150,7 +147,8 @@ class AuthController(
         request: HttpServletRequest,
     ): ResponseEntity<ApiResponse<Any>> {
         val data = mapOf(
-            "id" to user.userId,
+            "id" to user.id,
+            "userId" to user.userId,
             "email" to user.email,
             "realname" to user.realname,
             "nickname" to user.nickname,

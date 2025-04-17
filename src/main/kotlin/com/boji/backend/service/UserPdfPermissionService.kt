@@ -3,6 +3,7 @@ package com.boji.backend.service
 import com.boji.backend.model.*
 import com.boji.backend.repository.*
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Service
@@ -36,42 +37,83 @@ class UserPdfPermissionService(
     /**
      * 获取用户所有可访问的 PDF（包含继承权限，排除关闭的子库）
      */
-    fun getAccessiblePdfs(user: User): List<PdfItem> {
+//    fun getAccessiblePdfs(user: User): List<PdfItem> {
+//        val effectiveUser = getEffectiveUser(user)
+//        val now = LocalDateTime.now()
+//
+//        // 获取 PDF 权限并排除过期
+//        val pdfsFromDirectPermission = userPdfPermissionRepo.findByUser(effectiveUser)
+//            .filter {
+//                val expiresAt = it.expiresAt
+//                expiresAt == null || expiresAt.isAfter(now)
+//            }
+//            .map { it.pdfItem }
+//
+//        // 获取子库权限并排除过期
+//        val allowedCategories = userCategoryPermissionRepo.findByUser(effectiveUser)
+//            .filter {
+//                val expiresAt = it.expiresAt
+//                expiresAt == null || expiresAt.isAfter(now)
+//            }
+//            .map { it.categoryName }
+//            .toSet()
+//
+//        // 获取开启状态的子库
+//        val openCategoryNames = pdfCategoryControlRepo.findAll()
+//            .filter { it.isOpen }
+//            .map { it.name }
+//            .toSet()
+//
+//        // 最终过滤逻辑
+//        val allPdfs = pdfItemRepo.findAll()
+//        return allPdfs.filter { pdf ->
+//            val category = pdf.category1
+//            if (category !in openCategoryNames) return@filter false
+//
+//            pdfsFromDirectPermission.contains(pdf) || allowedCategories.contains(category)
+//        }
+//    }
+
+    fun getAccessiblePdfIds(user: User): Set<Long> {
         val effectiveUser = getEffectiveUser(user)
         val now = LocalDateTime.now()
 
-        // 获取 PDF 权限并排除过期
-        val pdfsFromDirectPermission = userPdfPermissionRepo.findByUser(effectiveUser)
-            .filter {
-                val expiresAt = it.expiresAt
-                expiresAt == null || expiresAt.isAfter(now)
-            }
-            .map { it.pdfItem }
+        // 1. 获取所有开启状态的子库名
+        val openCategoryNames = pdfCategoryControlRepo.findAll()
+            .filter { it.isOpen }
+            .map { it.name }
+            .toSet()
 
-        // 获取子库权限并排除过期
+        // 2. 过滤出有效的子库权限
         val allowedCategories = userCategoryPermissionRepo.findByUser(effectiveUser)
             .filter {
                 val expiresAt = it.expiresAt
                 expiresAt == null || expiresAt.isAfter(now)
             }
             .map { it.categoryName }
+            .filter { it in openCategoryNames } // 必须是开放子库
             .toSet()
 
-        // 获取开启状态的子库
-        val openCategoryNames = pdfCategoryControlRepo.findAll()
-            .filter { it.isOpen }
-            .map { it.name }
-            .toSet()
+        // 3. 获取用户拥有直接权限的 PDF 条目（必须属于开放子库）
+        val directPdfIds = userPdfPermissionRepo.findByUser(effectiveUser)
+            .filter {
+                val expiresAt = it.expiresAt
+                val pdf = it.pdfItem
+                (expiresAt == null || expiresAt.isAfter(now)) &&
+                        pdf.category1 in openCategoryNames // 子库必须是开放状态
+            }
+            .map { it.pdfItem.id }
 
-        // 最终过滤逻辑
-        val allPdfs = pdfItemRepo.findAll()
-        return allPdfs.filter { pdf ->
-            val category = pdf.category1
-            if (category !in openCategoryNames) return@filter false
+        // 4. 获取用户具有子库权限的所有 PDF 条目
+        val categoryPdfIds = pdfItemRepo.findAll()
+            .asSequence()
+            .filter { it.category1 in allowedCategories }
+            .map { it.id }
+            .toList()
 
-            pdfsFromDirectPermission.contains(pdf) || allowedCategories.contains(category)
-        }
+        return (directPdfIds + categoryPdfIds).toSet()
     }
+
     /**
      * 查询 PDF 被授权给了哪些主用户（不含附属用户）
      */
@@ -97,6 +139,7 @@ class UserPdfPermissionService(
         userPdfPermissionRepo.delete(record)
     }
 
+    @Transactional
     fun grantCategoryToUser(user: User, categoryName: String, expiresAt: LocalDateTime? = null) {
         if (user.isSubUser) {
             throw IllegalArgumentException("不能给附属用户授权子库权限")
