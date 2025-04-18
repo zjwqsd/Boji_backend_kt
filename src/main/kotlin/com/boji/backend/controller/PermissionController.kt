@@ -131,7 +131,7 @@ class PermissionController(
     }
 
     @GetMapping("/check/pdf")
-    @AdminOnly
+//    @AdminOnly
     fun checkUserPdfPermission(
         @RequestParam userId: Long,
         @RequestParam pdfId: Long
@@ -186,23 +186,40 @@ class PermissionController(
 
 
 
-    @PostMapping("/categories/open")
+    @GetMapping("/categories/info")
     @AdminOnly
-    fun openCategory(@RequestParam categoryName: String): ResponseEntity<ApiResponse<Any>> {
+    fun getCategoryInfo(@RequestParam categoryName: String): ResponseEntity<ApiResponse<Map<String, Any>>> {
         val category = pdfCategoryControlRepo.findByName(categoryName)
             ?: throw GlobalExceptionHandler.BusinessException("子库 $categoryName 不存在")
-        category.isOpen = true
-        pdfCategoryControlRepo.save(category)
-        return ResponseEntity.ok(ApiResponse("子库已开启"))
+
+        val info = mapOf(
+            "isOpen" to category.isOpen,
+            "price" to category.price
+        )
+        return ResponseEntity.ok(ApiResponse("子库信息获取成功", info))
     }
 
-    @PostMapping("/categories/close")
+
+    data class SetCategoryInfoRequest(
+        val categoryName: String,
+        val isOpen: Boolean,
+        val price: Double? = null
+    )
+
+    @PostMapping("/categories/info")
     @AdminOnly
-    fun closeCategory(@RequestParam categoryName: String): ResponseEntity<ApiResponse<Any>> {
-        val category = pdfCategoryControlRepo.findByName(categoryName)
-            ?: throw GlobalExceptionHandler.BusinessException("子库 $categoryName 不存在")
-        category.isOpen = false
+    fun setCategoryInfo(@RequestBody request: SetCategoryInfoRequest): ResponseEntity<ApiResponse<Any>> {
+        val category = pdfCategoryControlRepo.findByName(request.categoryName)
+            ?: throw GlobalExceptionHandler.BusinessException("子库 ${request.categoryName} 不存在")
+
+        category.isOpen = request.isOpen
+        if (request.price != null) {
+            category.price = request.price
+        }
+
         pdfCategoryControlRepo.save(category)
-        return ResponseEntity.ok(ApiResponse("子库已关闭"))
+
+        return ResponseEntity.ok(ApiResponse("子库信息更新成功"))
     }
+
 }

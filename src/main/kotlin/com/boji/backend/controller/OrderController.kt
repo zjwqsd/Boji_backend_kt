@@ -7,6 +7,7 @@ import com.boji.backend.dto.OrderStatusResponse
 import com.boji.backend.model.Order
 //import com.boji.backend.model.OrderItemRequest
 import com.boji.backend.response.ApiResponse
+import com.boji.backend.security.AdminOnly
 import com.boji.backend.service.PaymentService
 import com.boji.backend.service.OrderService
 import org.springframework.http.ResponseEntity
@@ -43,5 +44,13 @@ class OrderController(
         val status = orderService.getOrderStatus(id)
         return ResponseEntity.ok(ApiResponse("查询成功", status))
     }
+
+    @GetMapping("/all")
+    @AdminOnly
+    fun getAllOrders(): ResponseEntity<ApiResponse<List<Order>>> {
+        val orders = orderService.getAllOrders()
+        return ResponseEntity.ok(ApiResponse("获取所有订单成功", orders))
+    }
+
 }
 

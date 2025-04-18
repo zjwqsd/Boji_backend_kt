@@ -16,6 +16,8 @@ class PdfCategoryControl {
     @Column(name = "is_open", nullable = false)
     var isOpen: Boolean = true
 
+    var price: Double = 0.0
+
     // 无参构造函数（JPA 要求）
     constructor()
 

@@ -61,4 +61,8 @@ class OrderService(
                 "购买子库权限（分类ID=${request.targetId}）"
         }
     }
+
+    fun getAllOrders(): List<Order>? {
+        return orderRepository.findAll()
+    }
 }
