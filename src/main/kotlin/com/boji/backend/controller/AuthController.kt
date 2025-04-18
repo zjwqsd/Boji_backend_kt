@@ -86,10 +86,13 @@ class AuthController(
             // 更新附属用户资料
             val updatedUser = existingUser.copy(
                 email = req.email,
+                password = req.password,
                 emailVerified = true,
                 nickname = req.nickname,
                 realname = req.realname,
-                phone = req.phone
+                phone = req.phone,
+                address = req.address,
+                company = req.company
             )
             userRepository.save(updatedUser)
 
