@@ -5,11 +5,16 @@ import com.boji.backend.dto.CreateOrderRequest
 import com.boji.backend.dto.OrderItemRequest
 import com.boji.backend.dto.OrderStatusResponse
 import com.boji.backend.model.Order
+import com.boji.backend.model.User
 //import com.boji.backend.model.OrderItemRequest
 import com.boji.backend.response.ApiResponse
 import com.boji.backend.security.AdminOnly
+import com.boji.backend.security.annotation.CurrentUser
+import com.boji.backend.security.annotation.RoleAllowed
+
 import com.boji.backend.service.PaymentService
 import com.boji.backend.service.OrderService
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -51,6 +56,21 @@ class OrderController(
         val orders = orderService.getAllOrders()
         return ResponseEntity.ok(ApiResponse("获取所有订单成功", orders))
     }
+
+    @GetMapping("/my")
+    @RoleAllowed("user")
+    fun getMyOrders(
+        @CurrentUser(role = "user") user: User?
+    ): ResponseEntity<ApiResponse<List<Order>>> {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse("无法获取当前用户信息"))
+        }
+
+        val orders = orderService.getOrdersByUserId(user.id)
+        return ResponseEntity.ok(ApiResponse("获取当前用户订单成功", orders))
+    }
+
+
 
 }
 

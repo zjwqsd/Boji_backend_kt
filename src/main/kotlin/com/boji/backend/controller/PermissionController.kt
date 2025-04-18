@@ -187,7 +187,7 @@ class PermissionController(
 
 
     @GetMapping("/categories/info")
-    @AdminOnly
+//    @AdminOnly
     fun getCategoryInfo(@RequestParam categoryName: String): ResponseEntity<ApiResponse<Map<String, Any>>> {
         val category = pdfCategoryControlRepo.findByName(categoryName)
             ?: throw GlobalExceptionHandler.BusinessException("子库 $categoryName 不存在")
